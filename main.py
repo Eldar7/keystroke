@@ -4,39 +4,12 @@ import json
 import os
 import pandas as pd
 
-# File is to be opened and closed numerous times. Should be re-written as a class.
-global userFilePath
-
 
 def getUserFileWriteSession():
 
     print("File Location: ", os.getcwd())
-    username = 'user'#input("Enter your username: ")
-    userFileName = (username + ".txt")
-
-    # If directory DNE.
-    if not os.path.isdir((os.path.join("./", "accounts"))):
-        # Create it.
-        os.makedirs("accounts")
-
-    if os.path.exists(os.path.join("accounts", userFileName)):
-        userFile = (os.path.join("accounts", userFileName))
-    else:
-        print("No File Exists! Creating New User")
-        if os.path.exists(os.path.join("accounts", userFileName)):
-            print("Username exists! Load it or choose different name")
-        else:
-            userFile = (os.path.join("accounts", userFileName))
-            writeFile = open(userFile, "w")
-            # Have to prime a file ready to be used with JSON
-            fileSetup = json.dumps([])
-            writeFile.write(fileSetup)
-            writeFile.close()
-            print("User Successfully Created", userFile)
-    print("Your account has been created: ", userFile)
-
-    global userFilePath
-    userFilePath = userFile
+    global username
+    username = input("Enter your username: ")
 
 
 def get_next_sn_by_user(username, df):
@@ -70,7 +43,7 @@ def userRecordData(eventList):
 
     # Create New Session and Write To File
     kdf = pd.DataFrame(eventList, columns=['key', 'action', 'time'])
-    readUserFile = addSNtoUser('user1', readUserFile, kdf)
+    readUserFile = addSNtoUser(username, readUserFile, kdf)
     readUserFile.to_csv('userdata.csv', index=False)
 
 
