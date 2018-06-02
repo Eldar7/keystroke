@@ -2,7 +2,7 @@ import pyHook
 import pythoncom
 import json
 import os
-
+import pandas as pd
 
 # File is to be opened and closed numerous times. Should be re-written as a class.
 global userFilePath
@@ -39,23 +39,39 @@ def getUserFileWriteSession():
     userFilePath = userFile
 
 
-def userRecordData(eventList):
-    userFile = userFilePath
+def get_next_sn_by_user(username, df):
+    try:
+        next_sn = max(df[df.username == username].sn) + 1
+    except:
+        next_sn = 0
+    return next_sn
 
-    #Read File to Grab Sessions
-    readUserFile = open(userFile, "r")
-    testFile = readUserFile.read()
-    #print(testFile)
-    userSessionList = json.loads(testFile)
-    readUserFile.close()
+
+def addSNtoUser(username, df, dfToAdd):
+    sn = get_next_sn_by_user(username, df)
+    dftmp = pd.DataFrame([[username, sn]], columns=['username', 'sn'])
+
+    ndf = pd.DataFrame()
+    ndf = ndf.append(dftmp).join(dfToAdd, how='right')
+
+    ndf.username = ndf.username.fillna(username)
+    ndf.sn = ndf.sn.fillna(sn)
+
+    return pd.concat([df, ndf], ignore_index=True)
+
+
+def userRecordData(eventList):
+    userFile = 'userdata.csv'
+
+    try:
+        readUserFile = pd.read_csv(userFile)
+    except:
+        readUserFile = pd.DataFrame()
 
     # Create New Session and Write To File
-    writeUserFile = open(userFile, "w")
-    newUserEventList = eventList
-    userSessionList.append(newUserEventList)
-    data = json.dumps(userSessionList)
-    writeUserFile.write(data)
-    writeUserFile.close()
+    kdf = pd.DataFrame(eventList, columns=['key', 'action', 'time'])
+    readUserFile = addSNtoUser('user1', readUserFile, kdf)
+    readUserFile.to_csv('userdata.csv', index=False)
 
 
 class KeyLogger(object):
