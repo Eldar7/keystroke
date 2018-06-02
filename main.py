@@ -4,32 +4,39 @@ import json
 import os
 
 
-username = 'user'
-userFileName = (username + ".txt")
+# File is to be opened and closed numerous times. Should be re-written as a class.
+global userFilePath
 
 
-# If directory DNE.
-if not os.path.isdir((os.path.join("./", "accounts"))):
-    # Create it.
-    os.makedirs("accounts")
+def getUserFileWriteSession():
 
+    print("File Location: ", os.getcwd())
+    username = 'user'#input("Enter your username: ")
+    userFileName = (username + ".txt")
 
-if os.path.exists(os.path.join("accounts", userFileName)):
-    userFilePath = (os.path.join("accounts", userFileName))
-else:
-    print("No File Exists! Creating New User")
+    # If directory DNE.
+    if not os.path.isdir((os.path.join("./", "accounts"))):
+        # Create it.
+        os.makedirs("accounts")
+
     if os.path.exists(os.path.join("accounts", userFileName)):
-        print("Username exists! Load it or choose different name")
-    else:
         userFile = (os.path.join("accounts", userFileName))
-        writeFile = open(userFile, "w")
-        # Have to prime a file ready to be used with JSON
-        fileSetup = json.dumps([])
-        writeFile.write(fileSetup)
-        writeFile.close()
-        print("User Successfully Created", userFile)
-        userFilePath = userFile
-print("Your account has been created: ", userFile)
+    else:
+        print("No File Exists! Creating New User")
+        if os.path.exists(os.path.join("accounts", userFileName)):
+            print("Username exists! Load it or choose different name")
+        else:
+            userFile = (os.path.join("accounts", userFileName))
+            writeFile = open(userFile, "w")
+            # Have to prime a file ready to be used with JSON
+            fileSetup = json.dumps([])
+            writeFile.write(fileSetup)
+            writeFile.close()
+            print("User Successfully Created", userFile)
+    print("Your account has been created: ", userFile)
+
+    global userFilePath
+    userFilePath = userFile
 
 
 def userRecordData(eventList):
@@ -75,7 +82,7 @@ class KeyLogger(object):
         keystrokeTime = int(event.Time)
         #keystrokeCharacter = chr(event.Ascii)
 
-        self.eventList.append((activity, int(keystrokeTime)))
+        self.eventList.append((event.Key, activity, int(keystrokeTime)))
 
         # Chosen to use Escape key (ESC) due to input using a similar method
         # Enter Key - KeyCode: 13 Ascii: 13 ScanCode: 28 - ESC = 27 @ Ascii
@@ -83,6 +90,8 @@ class KeyLogger(object):
             self.initialized = True
         elif event.Ascii == 13:#27:
             self.enterPressed = True
+            del self.eventList[0]#Удалим отпускание Enter, которое почему-то записывается
+            del self.eventList[-1]#Удалим нажатие Enter в конце
             userRecordData(self.eventList)
 
 
@@ -95,6 +104,7 @@ def usernamePasswordInput():
     hookManager.KeyUp = keyLogger.keyUpEvent
     hookManager.HookKeyboard()
 
+    print('here we go')
     keyLogger.mainLoop()
 
     # Unhooks the keyboard, no more data recorded, returns to menu
@@ -102,5 +112,6 @@ def usernamePasswordInput():
 
 
 if __name__ == '__main__':
-    print('here we go')
+    getUserFileWriteSession()
+
     usernamePasswordInput()
