@@ -3,13 +3,15 @@ import pythoncom
 import json
 import os
 import pandas as pd
+import sys
+import datetime
 
 
 def getUserFileWriteSession():
-
     print("File Location: ", os.getcwd())
     global username
     username = input("Enter your username: ")
+    sys.stdout.flush()
 
 
 def get_next_sn_by_user(username, df):
@@ -20,15 +22,18 @@ def get_next_sn_by_user(username, df):
     return next_sn
 
 
-def addSNtoUser(username, df, dfToAdd):
+def addSNtoUser(username, df, dfToAdd, phrase):
     sn = get_next_sn_by_user(username, df)
-    dftmp = pd.DataFrame([[username, sn]], columns=['username', 'sn'])
+    date = datetime.datetime.now()
+    dftmp = pd.DataFrame([[username, sn, phrase, date]], columns=['username', 'sn', 'phrase', 'date'])
 
     ndf = pd.DataFrame()
     ndf = ndf.append(dftmp).join(dfToAdd, how='right')
 
     ndf.username = ndf.username.fillna(username)
     ndf.sn = ndf.sn.fillna(sn)
+    ndf.phrase = ndf.phrase.fillna(phrase)
+    ndf.date = ndf.date.fillna(date)
 
     return pd.concat([df, ndf], ignore_index=True)
 
@@ -41,9 +46,15 @@ def userRecordData(eventList):
     except:
         readUserFile = pd.DataFrame()
 
+    phrase = input()
+    if phrase == 'q':
+        exit()
+    sn = get_next_sn_by_user(username, readUserFile)
+    print('sn =', str(sn), 'Your phrase is:', phrase)
+
     # Create New Session and Write To File
     kdf = pd.DataFrame(eventList, columns=['key', 'action', 'time'])
-    readUserFile = addSNtoUser(username, readUserFile, kdf)
+    readUserFile = addSNtoUser(username, readUserFile, kdf, phrase)
     readUserFile.to_csv('userdata.csv', index=False)
 
 
@@ -52,6 +63,7 @@ class KeyLogger(object):
         self.enterPressed = False
         self.eventList = []
         self.initialized = False
+        self.initialized2 = False
 
     def keyDownEvent(self, event):
         self.storeEvent("Down", event)
@@ -69,7 +81,7 @@ class KeyLogger(object):
 
     def storeEvent(self, activity, event):
         keystrokeTime = int(event.Time)
-        #keystrokeCharacter = chr(event.Ascii)
+        # keystrokeCharacter = chr(event.Ascii)
 
         self.eventList.append((event.Key, activity, int(keystrokeTime)))
 
@@ -77,30 +89,32 @@ class KeyLogger(object):
         # Enter Key - KeyCode: 13 Ascii: 13 ScanCode: 28 - ESC = 27 @ Ascii
         if not self.initialized:
             self.initialized = True
-        elif event.Ascii == 13:#27:
-            self.enterPressed = True
-            del self.eventList[0]#Удалим отпускание Enter, которое почему-то записывается
-            del self.eventList[-1]#Удалим нажатие Enter в конце
-            userRecordData(self.eventList)
+        elif event.Ascii == 13:  # 27:
+            if not self.initialized2:
+                self.initialized2 = True
+            else:
+                self.enterPressed = True
+                self.eventList = [x for x in self.eventList if x[0] != 'Return']
+                userRecordData(self.eventList)
 
 
 def usernamePasswordInput():
+    while True:
+        keyLogger = KeyLogger()
 
-    keyLogger = KeyLogger()
+        hookManager = pyHook.HookManager()
+        hookManager.KeyDown = keyLogger.keyDownEvent
+        hookManager.KeyUp = keyLogger.keyUpEvent
+        hookManager.HookKeyboard()
 
-    hookManager = pyHook.HookManager()
-    hookManager.KeyDown = keyLogger.keyDownEvent
-    hookManager.KeyUp = keyLogger.keyUpEvent
-    hookManager.HookKeyboard()
+        print('Type q to exit.')
+        print('Enter your phrase: ')
+        keyLogger.mainLoop()
 
-    print('here we go')
-    keyLogger.mainLoop()
-
-    # Unhooks the keyboard, no more data recorded, returns to menu
-    hookManager.UnhookKeyboard()
+        # Unhooks the keyboard, no more data recorded, returns to menu
+        hookManager.UnhookKeyboard()
 
 
 if __name__ == '__main__':
     getUserFileWriteSession()
-
     usernamePasswordInput()
